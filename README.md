@@ -6,7 +6,7 @@ Docker and Docker Compose installed on your machine.
 
 ## Usage
 1. Clone the repository
-2. Run `docker compose up` in the root of the repository
+2. Run `docker compose up -d` in the root of the repository
 3. Connect to the Atlas instance at `mongodb://localhost:27017?directConnection=true`
 
 ## References
