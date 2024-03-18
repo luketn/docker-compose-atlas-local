@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  key-file:
+    image: docker.io/mongodb/mongodb-enterprise-server:7.0-ubi8
+    volumes:
+      - keys:/keys
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        openssl rand -base64 741 | tr -d "+/=\n" > /keys/keyfile
+        chmod 600 /keys/keyfile
+
+  mongod:
+    image: docker.io/mongodb/mongodb-enterprise-server:7.0-ubi8
+    hostname: mongod
+    depends_on:
+      key-file:
+        condition: service_completed_successfully
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb:/data/db
+      - keys:/keys
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        python3 /usr/local/bin/docker-entrypoint.py \
+          --dbpath "/data/db" \
+          --keyFile "/keys/keyfile" \
+          --replSet "rs-localdev" \
+          --maxConns 32200 \
+          --setParameter "mongotHost=mongot:27027" \
+          --setParameter "searchIndexManagementHostAndPort=mongot:27027" \
+          --transitionToAuth
+          
+  mongod-init-rs:
+    image: docker.io/mongodb/mongodb-enterprise-server:7.0-ubi8
+    hostname: mongod-init-rs
+    depends_on:
+      - mongod
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "Initialising replica set..."
+        until mongosh --host mongod --eval "db.adminCommand('ping')"; do
+            sleep 1
+        done
+        mongosh --host mongod --eval "rs.initiate()"
+        echo "Replica set initialised"
+
+  mongot:
+    image: docker.io/mongodb/mongodb-atlas-search:preview
+    hostname: mongot
+    depends_on:
+      mongod-init-rs:
+        condition: service_completed_successfully
+    volumes:
+      - mongot:/var/lib/mongot
+      - keys:/keys
+    environment:
+      - MONGOD_HOST_AND_PORT=mongod:27017
+      - KEY_FILE=/keys/keyfile
+      - DATA_DIR=/var/lib/mongot
+
+volumes:
+  mongot:
+  mongodb:
+  keys:
+    driver: local
+    driver_opts:
+      type: none
+      device: .
+      o: bind
+
+networks:
+  local-atlas-network:
+    ipam:
+      config:
+        - subnet: 10.89.0.0/24
