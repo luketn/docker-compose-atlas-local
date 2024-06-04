@@ -11,4 +11,6 @@ Docker and Docker Compose installed on your machine.
 
 ## References
 - [Atlas CLI Code](https://github.com/mongodb/mongodb-atlas-cli)
-  (in particular /internal/cli/atlas/deployments/setup.go) 
+  (in particular /internal/cli/atlas/deployments/setup.go)
+- Full detailed description of the code:  
+https://medium.com/@luketn/mongodb-local-atlas-deployments-under-the-hood-225b1b685fb7
